@@ -1,0 +1,13 @@
+services:
+  ag-usage-hub:
+    build: .
+    container_name: ag-usage-hub
+    restart: unless-stopped
+    ports:
+      - "${AG_BIND:-127.0.0.1:8787}:8787"
+    env_file:
+      - .env
+    environment:
+      - AG_DB_PATH=/app/data/usage.db
+    volumes:
+      - ./data:/app/data

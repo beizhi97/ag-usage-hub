@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Antigravity Usage Hub · 极客 Token 战绩看板</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            cyber: {
+              bg: '#090d16',
+              card: '#111827',
+              border: '#1f2937',
+              neon: '#10b981',
+              cyan: '#06b6d4',
+              purple: '#8b5cf6',
+              amber: '#f59e0b'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #090d16;
+      color: #f3f4f6;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    .pulse-online {
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+      animation: pulse-green 2s infinite;
+    }
+    @keyframes pulse-green {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #090d16; }
+    ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+  </style>
+</head>
+<body class="min-h-screen selection:bg-emerald-500 selection:text-black">
+  <!-- Top Navigation & Device Bar -->
+  <header class="sticky top-0 z-30 border-b border-gray-800/80 bg-[#090d16]/90 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 font-black text-gray-950 text-lg">
+          AG
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight bg-gradient-to-r from-white via-gray-200 to-emerald-400 bg-clip-text text-transparent">
+            Antigravity Usage Hub
+          </h1>
+          <p class="text-xs text-gray-400">零隐私采集 · 多端 Token 遥测与成就战绩中心</p>
+        </div>
+      </div>
+
+      <!-- Device Filter Pills & Actions -->
+      <div class="flex flex-wrap items-center gap-3">
+        <!-- Device Status Capsules -->
+        <div id="devicePillsContainer" class="flex flex-wrap items-center gap-2"></div>
+
+        <!-- Device Select Dropdown -->
+        <select id="deviceSelect" onchange="handleDeviceChange(this.value)"
+          class="bg-gray-900 border border-gray-700 text-gray-200 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500">
+          <option value="all">🌐 全部设备汇总 (All Devices)</option>
+        </select>
+
+        <!-- + New Client Button -->
+        <button onclick="openNewDeviceModal()"
+          class="inline-flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-gray-950 font-semibold text-xs px-4 py-2 rounded-lg shadow-lg shadow-emerald-500/20 transition transform active:scale-95">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+          </svg>
+          <span>+ 新建客户端</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <!-- 4 Major Achievement KPI Cards -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- Card 1: Total Tokens -->
+      <div class="bg-gray-900/90 border border-gray-800 rounded-xl p-5 relative overflow-hidden">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium uppercase tracking-wider text-gray-400">累计总 Token 消耗</span>
+          <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" id="kpiActiveDays">0 活跃天</span>
+        </div>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span id="kpiTotalTokens" class="text-3xl font-extrabold text-white tracking-tight">0</span>
+          <span id="kpiTotalTokensRaw" class="text-xs text-gray-500 font-mono">0</span>
+        </div>
+        <div class="mt-3 text-xs text-gray-400 flex justify-between font-mono">
+          <span>In: <b id="kpiInputTokens" class="text-gray-200">0</b></span>
+          <span>Out: <b id="kpiOutputTokens" class="text-gray-200">0</b></span>
+          <span>Think: <b id="kpiReasoningTokens" class="text-gray-200">0</b></span>
+        </div>
+      </div>
+
+      <!-- Card 2: Total API Equivalent Cost -->
+      <div class="bg-gray-900/90 border border-gray-800 rounded-xl p-5 relative overflow-hidden">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium uppercase tracking-wider text-gray-400">等价 API 美金总账单</span>
+          <span class="text-xs px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">USD 折算</span>
+        </div>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span id="kpiTotalCost" class="text-3xl font-extrabold text-cyan-400 tracking-tight">$0.00</span>
+        </div>
+        <div class="mt-3 text-xs text-gray-400 flex justify-between">
+          <span>本月已刷: <b id="kpiMonthCost" class="text-cyan-300 font-mono">$0.00</b></span>
+          <span id="kpiCurrentMonth" class="font-mono text-gray-500">----</span>
+        </div>
+      </div>
+
+      <!-- Card 3: $200 Subscription ROI Multiplier -->
+      <div class="bg-gray-900/90 border border-gray-800 rounded-xl p-5 relative overflow-hidden">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium uppercase tracking-wider text-gray-400">本月 $<span id="kpiSubUsd">200</span> 订阅回本倍率</span>
+          <span id="kpiRoiBadge" class="text-xs px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 font-mono">0.00x</span>
+        </div>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span id="kpiRoiMultiplier" class="text-3xl font-extrabold text-purple-400 tracking-tight">0.00x</span>
+          <span id="kpiRoiPercent" class="text-xs text-gray-400 font-mono">(0%)</span>
+        </div>
+        <div class="mt-3 w-full bg-gray-800 h-2.5 rounded-full overflow-hidden">
+          <div id="kpiRoiBar" class="bg-gradient-to-r from-purple-500 via-emerald-400 to-cyan-400 h-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Card 4: Cache Hit Rate -->
+      <div class="bg-gray-900/90 border border-gray-800 rounded-xl p-5 relative overflow-hidden">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium uppercase tracking-wider text-gray-400">总缓存命中率 (Cache Hit)</span>
+          <span class="text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">Prompt Cache</span>
+        </div>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span id="kpiCacheHitRate" class="text-3xl font-extrabold text-amber-400 tracking-tight">0.0%</span>
+        </div>
+        <div class="mt-3 text-xs text-gray-400 flex justify-between font-mono">
+          <span>Read: <b id="kpiCacheRead" class="text-gray-200">0</b></span>
+          <span>Create: <b id="kpiCacheCreate" class="text-gray-200">0</b></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Chart 1: 180-Day GitHub Style Coding Heatmap -->
+    <section class="bg-gray-900/90 border border-gray-800 rounded-xl p-5">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <h2 class="text-sm font-bold text-gray-100">🔥 近 180 天高能编码热力图 (GitHub 绿格子风格)</h2>
+          <p class="text-xs text-gray-400">按每日 Token 消耗强度着色，见证每一次深夜 Vibe Coding</p>
+        </div>
+      </div>
+      <div id="heatmapChart" class="w-full h-44"></div>
+    </section>
+
+    <!-- Chart 2 & Chart 3: Daily Trend + Model Breakdown -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Daily Token & USD Dual-Axis Trend -->
+      <div class="lg:col-span-2 bg-gray-900/90 border border-gray-800 rounded-xl p-5">
+        <div class="mb-3">
+          <h2 class="text-sm font-bold text-gray-100">📈 每日 Token 消耗与等价美金双轴趋势</h2>
+          <p class="text-xs text-gray-400">左轴：Token 消耗量 · 右轴：折算 API 成本 ($ USD)</p>
+        </div>
+        <div id="dailyTrendChart" class="w-full h-80"></div>
+      </div>
+
+      <!-- Model Cost Doughnut Chart -->
+      <div class="bg-gray-900/90 border border-gray-800 rounded-xl p-5 flex flex-col">
+        <div class="mb-3">
+          <h2 class="text-sm font-bold text-gray-100">🧠 模型消耗占比与成本排行</h2>
+          <p class="text-xs text-gray-400">各主力模型美金账单与 Token 贡献比</p>
+        </div>
+        <div id="modelPieChart" class="w-full h-52"></div>
+        <div id="modelRankList" class="mt-3 flex-1 overflow-y-auto max-h-40 space-y-2 pr-1"></div>
+      </div>
+    </section>
+
+    <!-- Connected Devices Table (Re-view Prompt / Revoke) -->
+    <section class="bg-gray-900/90 border border-gray-800 rounded-xl p-5">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-sm font-bold text-gray-100">💻 已签发客户端设备列表</h2>
+          <p class="text-xs text-gray-400">支持随时重看 Agent 一句话安装指令，或吊销异常设备 Token</p>
+        </div>
+        <button onclick="openNewDeviceModal()" class="text-xs text-emerald-400 hover:text-emerald-300 font-semibold">
+          + 新增设备
+        </button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-xs">
+          <thead>
+            <tr class="border-b border-gray-800 text-gray-400">
+              <th class="py-2.5 px-3">状态</th>
+              <th class="py-2.5 px-3">设备名称</th>
+              <th class="py-2.5 px-3">Device ID</th>
+              <th class="py-2.5 px-3">主机名 / OS</th>
+              <th class="py-2.5 px-3">累计 Token</th>
+              <th class="py-2.5 px-3">累计账单</th>
+              <th class="py-2.5 px-3">最后上报时间</th>
+              <th class="py-2.5 px-3 text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody id="deviceTableBody" class="divide-y divide-gray-800/60 text-gray-200"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal: Create / View Client Agent Prompt -->
+  <div id="clientModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+    <div class="bg-gray-900 border border-gray-700 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-5">
+      <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+        <h3 id="modalTitle" class="text-base font-bold text-white">⚡ 新建客户端并生成 Agent 安装指令</h3>
+        <button onclick="closeClientModal()" class="text-gray-400 hover:text-white text-lg leading-none">&times;</button>
+      </div>
+
+      <!-- Form Section -->
+      <div id="createFormSection" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-gray-300 mb-1">管理员密钥 (AG_ADMIN_KEY)</label>
+          <input id="inputAdminKey" type="password" placeholder="输入服务端 AG_ADMIN_KEY（验证通过自动保存）"
+            class="w-full bg-gray-950 border border-gray-700 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-300 mb-1">客户端设备名称</label>
+          <input id="inputDeviceName" type="text" placeholder="例如：MacBook-Pro / 主力台式机 / 云开发机"
+            class="w-full bg-gray-950 border border-gray-700 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
+        </div>
+        <div id="modalErrorMsg" class="hidden text-xs text-red-400 bg-red-950/50 border border-red-800/60 rounded-lg p-2.5"></div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button onclick="closeClientModal()" class="px-4 py-2 rounded-lg text-xs text-gray-300 hover:bg-gray-800">取消</button>
+          <button onclick="submitCreateDevice()"
+            class="px-5 py-2 rounded-lg text-xs font-bold bg-gradient-to-r from-emerald-500 to-cyan-500 text-gray-950 hover:from-emerald-400 hover:to-cyan-400">
+            签发专属 Token 并生成指令
+          </button>
+        </div>
+      </div>
+
+      <!-- Generated Agent Prompt Result Section -->
+      <div id="promptResultSection" class="hidden space-y-4">
+        <div class="flex items-center justify-between text-xs bg-emerald-950/40 border border-emerald-700/40 rounded-lg px-3.5 py-2 text-emerald-300">
+          <span>✅ 已就绪：<b id="resultDeviceName"></b> (<code id="resultDeviceId"></code>)</span>
+          <span class="font-mono text-[11px] text-emerald-400">零配置免密自举</span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-emerald-400 mb-1.5">
+            📋 复制下方一句话指令，直接发给客户端的 AI Agent（如 Antigravity / Claude Code）执行：
+          </label>
+          <div class="relative">
+            <pre id="agentPromptText" class="bg-gray-950 border border-emerald-500/40 rounded-xl p-4 text-xs text-emerald-200 font-mono whitespace-pre-wrap break-all leading-relaxed select-all"></pre>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-2">
+          <span id="copySuccessHint" class="text-xs text-emerald-400 opacity-0 transition-opacity">🎉 已复制到剪贴板！直接粘贴给客户端 Agent 即可。</span>
+          <div class="flex gap-2">
+            <button onclick="copyAgentPrompt()"
+              class="px-5 py-2.5 rounded-lg text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-gray-950 shadow-lg shadow-emerald-500/20">
+              【一键复制 Agent 安装指令】
+            </button>
+            <button onclick="closeClientModal()" class="px-4 py-2.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-200">
+              完成
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ADMIN_KEY_STORAGE = 'ag_usage_hub_admin_key';
+    let currentDeviceFilter = 'all';
+    let heatmapChartInstance = null;
+    let dailyTrendChartInstance = null;
+    let modelPieChartInstance = null;
+
+    function formatTokens(num) {
+      const n = Number(num || 0);
+      if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+      if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+      if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+      return String(n);
+    }
+
+    function formatUsd(num) {
+      return '$' + Number(num || 0).toFixed(2);
+    }
+
+    function getSavedAdminKey() {
+      return localStorage.getItem(ADMIN_KEY_STORAGE) || '';
+    }
+
+    function saveAdminKey(key) {
+      if (key) localStorage.setItem(ADMIN_KEY_STORAGE, key.trim());
+    }
+
+    async function loadDashboard() {
+      const headers = {};
+      const savedKey = getSavedAdminKey();
+      if (savedKey) headers['X-Admin-Key'] = savedKey;
+
+      const res = await fetch(`/api/stats?device=${encodeURIComponent(currentDeviceFilter)}`, { headers });
+      if (res.status === 401 || res.status === 403) {
+        const key = prompt('当前看板已开启访问锁 (AG_LOCK_VIEW)，请输入管理员密钥 AG_ADMIN_KEY：');
+        if (key) {
+          saveAdminKey(key);
+          return loadDashboard();
+        }
+        return;
+      }
+      const data = await res.json();
+      renderKPIs(data.kpi);
+      renderDeviceHeader(data.devices, data.device_filter);
+      renderDeviceTable(data.devices);
+      renderHeatmap(data.daily);
+      renderDailyTrend(data.daily);
+      renderModelBreakdown(data.models);
+    }
+
+    function renderKPIs(kpi) {
+      document.getElementById('kpiTotalTokens').textContent = formatTokens(kpi.total_tokens);
+      document.getElementById('kpiTotalTokensRaw').textContent = Number(kpi.total_tokens || 0).toLocaleString();
+      document.getElementById('kpiInputTokens').textContent = formatTokens(kpi.input_tokens);
+      document.getElementById('kpiOutputTokens').textContent = formatTokens(kpi.output_tokens);
+      document.getElementById('kpiReasoningTokens').textContent = formatTokens(kpi.reasoning_tokens);
+      document.getElementById('kpiActiveDays').textContent = `${kpi.active_days || 0} 活跃天`;
+
+      document.getElementById('kpiTotalCost').textContent = formatUsd(kpi.total_cost);
+      document.getElementById('kpiMonthCost').textContent = formatUsd(kpi.current_month_cost);
+      document.getElementById('kpiCurrentMonth').textContent = kpi.current_month || '';
+
+      document.getElementById('kpiSubUsd').textContent = kpi.sub_monthly_usd || 200;
+      const mult = Number(kpi.roi_multiplier || 0).toFixed(2) + 'x';
+      document.getElementById('kpiRoiMultiplier').textContent = mult;
+      document.getElementById('kpiRoiBadge').textContent = mult;
+      document.getElementById('kpiRoiPercent').textContent = `(${kpi.roi_percent || 0}%)`;
+      const barWidth = Math.min(100, Math.max(0, Number(kpi.roi_percent || 0)));
+      document.getElementById('kpiRoiBar').style.width = `${barWidth}%`;
+
+      document.getElementById('kpiCacheHitRate').textContent = `${Number(kpi.cache_hit_rate || 0).toFixed(1)}%`;
+      document.getElementById('kpiCacheRead').textContent = formatTokens(kpi.cache_read_tokens);
+      document.getElementById('kpiCacheCreate').textContent = formatTokens(kpi.cache_creation_tokens);
+    }
+
+    function renderDeviceHeader(devices, activeFilter) {
+      const pillsEl = document.getElementById('devicePillsContainer');
+      const selectEl = document.getElementById('deviceSelect');
+
+      pillsEl.innerHTML = '';
+      devices.forEach(dev => {
+        const dotColor = dev.status === 'online'
+          ? 'bg-emerald-400 pulse-online'
+          : (dev.status === 'idle' ? 'bg-amber-400' : 'bg-gray-500');
+        const activeClass = activeFilter === dev.device_id
+          ? 'border-emerald-500 bg-emerald-950/40 text-white'
+          : 'border-gray-800 bg-gray-900 text-gray-300 hover:border-gray-700';
+
+        const btn = document.createElement('button');
+        btn.className = `inline-flex items-center gap-2 px-2.5 py-1 rounded-full border text-xs transition ${activeClass}`;
+        btn.onclick = () => handleDeviceChange(dev.device_id === activeFilter ? 'all' : dev.device_id);
+        btn.innerHTML = `<span class="w-2 h-2 rounded-full ${dotColor}"></span><span>${escapeHtml(dev.display_name)}</span>`;
+        pillsEl.appendChild(btn);
+      });
+
+      selectEl.innerHTML = '<option value="all">🌐 全部设备汇总 (All Devices)</option>';
+      devices.forEach(dev => {
+        const opt = document.createElement('option');
+        opt.value = dev.device_id;
+        opt.textContent = `${dev.display_name} (${dev.status.toUpperCase()})`;
+        if (dev.device_id === activeFilter) opt.selected = true;
+        selectEl.appendChild(opt);
+      });
+    }
+
+    function renderDeviceTable(devices) {
+      const tbody = document.getElementById('deviceTableBody');
+      if (!devices || devices.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-gray-500">暂无客户端设备，请点击右上角 <b>「+ 新建客户端」</b> 生成安装指令</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = devices.map(dev => {
+        const badge = dev.status === 'online'
+          ? '<span class="inline-flex items-center gap-1.5 text-emerald-400"><span class="w-2 h-2 rounded-full bg-emerald-400 pulse-online"></span>ONLINE</span>'
+          : (dev.status === 'idle'
+            ? '<span class="inline-flex items-center gap-1.5 text-amber-400"><span class="w-2 h-2 rounded-full bg-amber-400"></span>IDLE</span>'
+            : '<span class="inline-flex items-center gap-1.5 text-gray-500"><span class="w-2 h-2 rounded-full bg-gray-500"></span>OFFLINE</span>');
+
+        const hostOs = [dev.hostname, dev.os_info].filter(Boolean).join(' · ') || '-';
+        return `
+          <tr class="hover:bg-gray-800/40">
+            <td class="py-2.5 px-3 font-mono">${badge}</td>
+            <td class="py-2.5 px-3 font-semibold text-white">${escapeHtml(dev.display_name)}</td>
+            <td class="py-2.5 px-3 font-mono text-gray-400">${escapeHtml(dev.device_id)}</td>
+            <td class="py-2.5 px-3 text-gray-400">${escapeHtml(hostOs)}</td>
+            <td class="py-2.5 px-3 font-mono text-emerald-300">${formatTokens(dev.total_tokens)}</td>
+            <td class="py-2.5 px-3 font-mono text-cyan-300">${formatUsd(dev.total_cost)}</td>
+            <td class="py-2.5 px-3 font-mono text-gray-400">${dev.last_seen_at ? escapeHtml(dev.last_seen_at) : '从未上报'}</td>
+            <td class="py-2.5 px-3 text-right space-x-2">
+              <button onclick="showExistingDevicePrompt('${escapeHtml(dev.device_id)}')" class="text-cyan-400 hover:underline">重看指令</button>
+              <button onclick="revokeDevice('${escapeHtml(dev.device_id)}', '${escapeHtml(dev.display_name)}')" class="text-red-400 hover:underline">吊销</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderHeatmap(dailyList) {
+      if (!heatmapChartInstance) {
+        heatmapChartInstance = echarts.init(document.getElementById('heatmapChart'));
+      }
+      const end = new Date();
+      const start = new Date();
+      start.setDate(end.getDate() - 180);
+      const fmt = d => d.toISOString().slice(0, 10);
+
+      const mapData = {};
+      let maxTokens = 1000;
+      (dailyList || []).forEach(item => {
+        mapData[item.date] = item.total_tokens || 0;
+        if (item.total_tokens > maxTokens) maxTokens = item.total_tokens;
+      });
+
+      const seriesData = [];
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const key = fmt(d);
+        seriesData.push([key, mapData[key] || 0]);
+      }
+
+      heatmapChartInstance.setOption({
+        tooltip: {
+          backgroundColor: '#111827',
+          borderColor: '#374151',
+          textStyle: { color: '#f3f4f6', fontSize: 12 },
+          formatter: p => `${p.value[0]}<br/>Tokens: <b>${formatTokens(p.value[1])}</b> (${Number(p.value[1]).toLocaleString()})`
+        },
+        visualMap: {
+          min: 0,
+          max: maxTokens,
+          calculable: false,
+          orient: 'horizontal',
+          left: 'right',
+          bottom: 0,
+          itemWidth: 12,
+          itemHeight: 60,
+          textStyle: { color: '#9ca3af', fontSize: 10 },
+          inRange: {
+            color: ['#161b22', '#0e4429', '#006d32', '#26a641', '#39d353']
+          }
+        },
+        calendar: {
+          top: 22,
+          left: 36,
+          right: 16,
+          cellSize: ['auto', 14],
+          range: [fmt(start), fmt(end)],
+          itemStyle: {
+            color: '#161b22',
+            borderWidth: 2,
+            borderColor: '#090d16'
+          },
+          splitLine: { show: false },
+          yearLabel: { show: false },
+          dayLabel: { color: '#6b7280', fontSize: 10, nameMap: 'ZH' },
+          monthLabel: { color: '#9ca3af', fontSize: 10, nameMap: 'ZH' }
+        },
+        series: [{
+          type: 'heatmap',
+          coordinateSystem: 'calendar',
+          data: seriesData
+        }]
+      });
+    }
+
+    function renderDailyTrend(dailyList) {
+      if (!dailyTrendChartInstance) {
+        dailyTrendChartInstance = echarts.init(document.getElementById('dailyTrendChart'));
+      }
+      const dates = (dailyList || []).map(d => d.date);
+      const tokens = (dailyList || []).map(d => d.total_tokens);
+      const costs = (dailyList || []).map(d => Number(d.total_cost || 0).toFixed(2));
+
+      dailyTrendChartInstance.setOption({
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: '#111827',
+          borderColor: '#374151',
+          textStyle: { color: '#f3f4f6' }
+        },
+        legend: {
+          data: ['总 Token 数', 'API 折算美金 ($)'],
+          textStyle: { color: '#9ca3af', fontSize: 11 },
+          top: 0
+        },
+        grid: { left: 50, right: 50, top: 32, bottom: 28 },
+        xAxis: {
+          type: 'category',
+          data: dates,
+          axisLabel: { color: '#9ca3af', fontSize: 10 },
+          axisLine: { lineStyle: { color: '#374151' } }
+        },
+        yAxis: [
+          {
+            type: 'value',
+            name: 'Tokens',
+            nameTextStyle: { color: '#9ca3af', fontSize: 10 },
+            axisLabel: { color: '#9ca3af', fontSize: 10, formatter: v => formatTokens(v) },
+            splitLine: { lineStyle: { color: '#1f2937' } }
+          },
+          {
+            type: 'value',
+            name: 'USD ($)',
+            nameTextStyle: { color: '#06b6d4', fontSize: 10 },
+            axisLabel: { color: '#06b6d4', fontSize: 10, formatter: v => '$' + v },
+            splitLine: { show: false }
+          }
+        ],
+        series: [
+          {
+            name: '总 Token 数',
+            type: 'bar',
+            data: tokens,
+            itemStyle: { color: '#10b981', borderRadius: [4, 4, 0, 0] }
+          },
+          {
+            name: 'API 折算美金 ($)',
+            type: 'line',
+            yAxisIndex: 1,
+            smooth: true,
+            data: costs,
+            itemStyle: { color: '#06b6d4' },
+            lineStyle: { width: 2.5, color: '#06b6d4' }
+          }
+        ]
+      });
+    }
+
+    function renderModelBreakdown(models) {
+      if (!modelPieChartInstance) {
+        modelPieChartInstance = echarts.init(document.getElementById('modelPieChart'));
+      }
+      const pieData = (models || []).map(m => ({
+        name: m.model_name,
+        value: Number(m.total_cost || 0).toFixed(4)
+      }));
+
+      modelPieChartInstance.setOption({
+        tooltip: {
+          trigger: 'item',
+          backgroundColor: '#111827',
+          borderColor: '#374151',
+          textStyle: { color: '#f3f4f6' },
+          formatter: p => `${p.name}<br/>账单: <b>$${p.value}</b> (${p.percent}%)`
+        },
+        series: [{
+          type: 'pie',
+          radius: ['45%', '72%'],
+          center: ['50%', '50%'],
+          label: { color: '#d1d5db', fontSize: 10 },
+          data: pieData.length ? pieData : [{ name: '暂无数据', value: 0 }]
+        }]
+      });
+
+      const rankEl = document.getElementById('modelRankList');
+      if (!models || models.length === 0) {
+        rankEl.innerHTML = '<div class="text-xs text-gray-500 text-center py-4">暂无模型消耗记录</div>';
+        return;
+      }
+      rankEl.innerHTML = models.map((m, i) => `
+        <div class="flex items-center justify-between text-xs bg-gray-950/60 border border-gray-800/80 rounded-lg px-3 py-1.5">
+          <div class="flex items-center gap-2 truncate">
+            <span class="text-gray-500 font-mono">#${i + 1}</span>
+            <span class="font-medium text-gray-200 truncate">${escapeHtml(m.model_name)}</span>
+          </div>
+          <div class="flex items-center gap-3 font-mono shrink-0">
+            <span class="text-emerald-400">${formatTokens(m.total_tokens)}</span>
+            <span class="text-cyan-400 font-bold">${formatUsd(m.total_cost)}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function handleDeviceChange(deviceId) {
+      currentDeviceFilter = deviceId;
+      loadDashboard();
+    }
+
+    function openNewDeviceModal() {
+      document.getElementById('modalTitle').textContent = '⚡ 新建客户端并生成 Agent 安装指令';
+      document.getElementById('createFormSection').classList.remove('hidden');
+      document.getElementById('promptResultSection').classList.add('hidden');
+      document.getElementById('modalErrorMsg').classList.add('hidden');
+      document.getElementById('inputAdminKey').value = getSavedAdminKey();
+      document.getElementById('inputDeviceName').value = '';
+      const modal = document.getElementById('clientModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeClientModal() {
+      const modal = document.getElementById('clientModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    async function submitCreateDevice() {
+      const adminKey = document.getElementById('inputAdminKey').value.trim();
+      const displayName = document.getElementById('inputDeviceName').value.trim();
+      const errEl = document.getElementById('modalErrorMsg');
+      errEl.classList.add('hidden');
+
+      if (!adminKey || !displayName) {
+        errEl.textContent = '请填写管理员密钥 (AG_ADMIN_KEY) 与客户端设备名称。';
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      const res = await fetch('/api/devices', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Key': adminKey
+        },
+        body: JSON.stringify({
+          display_name: displayName,
+          origin: window.location.origin
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        errEl.textContent = errData.detail || `签发失败 (HTTP ${res.status})`;
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      saveAdminKey(adminKey);
+      const data = await res.json();
+      displayAgentPromptResult(data);
+      loadDashboard();
+    }
+
+    function displayAgentPromptResult(data) {
+      document.getElementById('createFormSection').classList.add('hidden');
+      document.getElementById('promptResultSection').classList.remove('hidden');
+      document.getElementById('resultDeviceName').textContent = data.display_name;
+      document.getElementById('resultDeviceId').textContent = data.device_id;
+      document.getElementById('agentPromptText').textContent = data.agent_prompt;
+    }
+
+    async function showExistingDevicePrompt(deviceId) {
+      let adminKey = getSavedAdminKey();
+      if (!adminKey) {
+        adminKey = prompt('请输入管理员密钥 (AG_ADMIN_KEY) 以查看该设备的安装指令：') || '';
+        if (!adminKey) return;
+      }
+      const res = await fetch(`/api/devices/${encodeURIComponent(deviceId)}/prompt?origin=${encodeURIComponent(window.location.origin)}`, {
+        headers: { 'X-Admin-Key': adminKey }
+      });
+      if (!res.ok) {
+        alert('管理员密钥校验失败或设备不存在');
+        return;
+      }
+      saveAdminKey(adminKey);
+      const data = await res.json();
+      document.getElementById('modalTitle').textContent = '📋 客户端 Agent 一句话安装指令';
+      const modal = document.getElementById('clientModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      displayAgentPromptResult(data);
+    }
+
+    async function revokeDevice(deviceId, displayName) {
+      let adminKey = getSavedAdminKey();
+      if (!adminKey) {
+        adminKey = prompt('请输入管理员密钥 (AG_ADMIN_KEY) 以吊销设备：') || '';
+        if (!adminKey) return;
+      }
+      if (!confirm(`确定要吊销设备「${displayName} (${deviceId})」的 Token 吗？`)) return;
+      const purge = confirm('是否同时清除该设备已上报的历史 Token 记录？\n点击「确定」连带清除历史数据，点击「取消」仅吊销 Token 保留历史战绩。');
+
+      const res = await fetch(`/api/devices/${encodeURIComponent(deviceId)}?purge_data=${purge}`, {
+        method: 'DELETE',
+        headers: { 'X-Admin-Key': adminKey }
+      });
+      if (!res.ok) {
+        alert('吊销失败：请检查管理员密钥是否正确');
+        return;
+      }
+      saveAdminKey(adminKey);
+      if (currentDeviceFilter === deviceId) currentDeviceFilter = 'all';
+      loadDashboard();
+    }
+
+    async function copyAgentPrompt() {
+      const text = document.getElementById('agentPromptText').textContent;
+      await navigator.clipboard.writeText(text);
+      const hint = document.getElementById('copySuccessHint');
+      hint.classList.remove('opacity-0');
+      setTimeout(() => hint.classList.add('opacity-0'), 3000);
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    window.addEventListener('resize', () => {
+      heatmapChartInstance && heatmapChartInstance.resize();
+      dailyTrendChartInstance && dailyTrendChartInstance.resize();
+      modelPieChartInstance && modelPieChartInstance.resize();
+    });
+
+    loadDashboard();
+  </script>
+</body>
+</html>

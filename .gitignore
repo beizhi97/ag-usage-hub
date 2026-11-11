@@ -1,0 +1,32 @@
+# Python & Virtual Env
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Secrets & Databases
+.env
+.env.*
+!.env.example
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.key
+data/
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+ag-usage-hub.md
+
