@@ -327,8 +327,15 @@ try {
         }
     }
 
+    $env:NPM_CONFIG_UPDATE_NOTIFIER = "false"
+    $env:NO_UPDATE_NOTIFIER = "1"
     $AllArgs = $RunnerPrefix + $CcArgs
-    $RawOutput = & $Runner @AllArgs | Out-String
+    $RawOutput = (& $Runner @AllArgs 2>$null) | Out-String
+    $FirstBrace = $RawOutput.IndexOf('{')
+    $LastBrace = $RawOutput.LastIndexOf('}')
+    if ($FirstBrace -ge 0 -and $LastBrace -gt $FirstBrace) {
+        $RawOutput = $RawOutput.Substring($FirstBrace, $LastBrace - $FirstBrace + 1)
+    }
     if ([string]::IsNullOrWhiteSpace($RawOutput)) {
         throw "ccusage returned empty output."
     }
@@ -364,6 +371,28 @@ try {
                 break
             }
         } catch {
+            # Fallback to curl.exe bypassing TUN/proxy if standard WebRequest fails
+            try {
+                $UriObj = [System.Uri]$ApiUrl
+                $TargetHost = $UriObj.Host
+                $TargetPort = if ($UriObj.Port -gt 0) { $UriObj.Port } else { if ($UriObj.Scheme -eq "https") { 443 } else { 80 } }
+                $TmpGz = [System.IO.Path]::GetTempFileName()
+                [System.IO.File]::WriteAllBytes($TmpGz, $CompressedBytes)
+                $DohResp = curl.exe -sS --max-time 5 -H "accept: application/dns-json" "https://dns.alidns.com/resolve?name=$TargetHost&type=A" | ConvertFrom-Json
+                $EdgeIps = @($DohResp.Answer | Where-Object { $_.type -eq 1 } | Select-Object -ExpandProperty data)
+                $LanIp = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -match '^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)' } | Select-Object -First 1 -ExpandProperty IPAddress)
+                foreach ($EdgeIp in $EdgeIps) {
+                    $CurlArgs = @("--noproxy", "*", "--resolve", "${TargetHost}:${TargetPort}:${EdgeIp}", "-sS", "-o", "NUL", "-w", "%{http_code}", "--max-time", "25", "-X", "POST", $ApiUrl, "-H", "Authorization: Bearer $ApiToken", "-H", "Content-Type: application/json", "-H", "Content-Encoding: gzip", "--data-binary", "@$TmpGz")
+                    if ($LanIp) { $CurlArgs = @("--interface", $LanIp) + $CurlArgs }
+                    $HttpCode = (& curl.exe @CurlArgs 2>$null) | Out-String
+                    if ($HttpCode.Trim() -match '^2\d\d$') {
+                        $Success = $true
+                        break
+                    }
+                }
+                Remove-Item $TmpGz -Force -ErrorAction SilentlyContinue
+                if ($Success) { break }
+            } catch {}
             if ($i -eq 3) { throw }
             Start-Sleep -Seconds ($i * 2)
         }
