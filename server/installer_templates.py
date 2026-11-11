@@ -413,17 +413,17 @@ try {
 $SyncScriptContent = $SyncScriptContent.Replace("__BASE_URL__", $BaseUrl).Replace("__API_URL__", $ApiUrl).Replace("__API_TOKEN__", $ApiToken)
 Set-Content -Path $SyncScriptPath -Value $SyncScriptContent -Encoding UTF8
 
-# Register Windows Scheduled Task with StartWhenAvailable
+# Register Windows Scheduled Task with StartWhenAvailable (works for standard non-admin user)
 $TaskName = "AgUsageHubAgent"
 try {
     $Action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$SyncScriptPath`""
     $TriggerRepeat = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 30) -RepetitionDuration (New-TimeSpan -Days 3650)
-    $TriggerLogon = New-ScheduledTaskTrigger -AtLogOn
     $Settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Minutes 10)
-    Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger @($TriggerRepeat, $TriggerLogon) -Settings $Settings -Force | Out-Null
+    Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger @($TriggerRepeat) -Settings $Settings -Force | Out-Null
     Write-Host "[+] Registered Windows Scheduled Task '$TaskName' (every 30m + StartWhenAvailable)."
 } catch {
-    Write-Warning "Could not register Scheduled Task automatically: $_"
+    & schtasks.exe /Create /SC MINUTE /MO 30 /TN $TaskName /TR "powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$SyncScriptPath`"" /F | Out-Null
+    Write-Host "[+] Registered Windows Scheduled Task '$TaskName' via schtasks (every 30m)."
 }
 
 Write-Host "[*] Running initial full history sync now..."
