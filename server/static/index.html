@@ -63,15 +63,15 @@
       </div>
 
       <!-- Device Filter Pills & Actions -->
-      <div class="flex flex-wrap items-center gap-3">
+      <div class="flex flex-wrap items-center gap-2.5">
+        <!-- All Devices Summary Button -->
+        <button id="allDevicesBtn" onclick="handleDeviceChange('all')"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition border-emerald-500 bg-emerald-950/50 text-emerald-300 shadow-sm shadow-emerald-500/10">
+          <span>🌐 全部设备汇总</span>
+        </button>
+
         <!-- Device Status Capsules -->
         <div id="devicePillsContainer" class="flex flex-wrap items-center gap-2"></div>
-
-        <!-- Device Select Dropdown -->
-        <select id="deviceSelect" onchange="handleDeviceChange(this.value)"
-          class="bg-gray-900 border border-gray-700 text-gray-200 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500">
-          <option value="all">🌐 全部设备汇总 (All Devices)</option>
-        </select>
 
         <!-- + New Client Button -->
         <button onclick="openNewDeviceModal()"
@@ -87,8 +87,57 @@
 
   <!-- Main Content -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-    <!-- 4 Major Achievement KPI Cards -->
-    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <!-- Row 1: Today's KPI Cards -->
+    <section class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <!-- Today Card 1: Today Tokens -->
+      <div class="bg-gray-900/90 border border-gray-800 rounded-xl p-5 relative overflow-hidden">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium uppercase tracking-wider text-gray-400">今日 Token 消耗</span>
+        </div>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span id="kpiTodayTokens" class="text-3xl font-extrabold text-white tracking-tight">0</span>
+          <span id="kpiTodayTokensRaw" class="text-xs text-gray-500 font-mono">0</span>
+        </div>
+        <div class="mt-3 text-xs text-gray-400 flex justify-between font-mono">
+          <span>In: <b id="kpiTodayInputTokens" class="text-gray-200">0</b></span>
+          <span>Out: <b id="kpiTodayOutputTokens" class="text-gray-200">0</b></span>
+          <span>Think: <b id="kpiTodayReasoningTokens" class="text-gray-200">0</b></span>
+        </div>
+      </div>
+
+      <!-- Today Card 2: Today API Equivalent Cost -->
+      <div class="bg-gray-900/90 border border-gray-800 rounded-xl p-5 relative overflow-hidden">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium uppercase tracking-wider text-gray-400">今日等价 API 账单</span>
+          <span class="text-xs px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">USD 折算</span>
+        </div>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span id="kpiTodayCost" class="text-3xl font-extrabold text-cyan-400 tracking-tight">$0.00</span>
+        </div>
+        <div class="mt-3 text-xs text-gray-400 flex justify-between">
+          <span>较昨日: <b id="kpiYesterdayCost" class="text-cyan-300 font-mono">$0.00</b></span>
+          <span id="kpiTodayDate" class="font-mono text-gray-500">----</span>
+        </div>
+      </div>
+
+      <!-- Today Card 3: Today Cache Hit Rate -->
+      <div class="bg-gray-900/90 border border-gray-800 rounded-xl p-5 relative overflow-hidden">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium uppercase tracking-wider text-gray-400">今日缓存命中率 (Cache Hit)</span>
+          <span class="text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">Prompt Cache</span>
+        </div>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span id="kpiTodayCacheHitRate" class="text-3xl font-extrabold text-amber-400 tracking-tight">0.0%</span>
+        </div>
+        <div class="mt-3 text-xs text-gray-400 flex justify-between font-mono">
+          <span>Read: <b id="kpiTodayCacheRead" class="text-gray-200">0</b></span>
+          <span>Create: <b id="kpiTodayCacheCreate" class="text-gray-200">0</b></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Row 2: Cumulative Achievement KPI Cards -->
+    <section class="grid grid-cols-1 sm:grid-cols-3 gap-4">
       <!-- Card 1: Total Tokens -->
       <div class="bg-gray-900/90 border border-gray-800 rounded-xl p-5 relative overflow-hidden">
         <div class="flex items-center justify-between">
@@ -121,22 +170,7 @@
         </div>
       </div>
 
-      <!-- Card 3: $200 Subscription ROI Multiplier -->
-      <div class="bg-gray-900/90 border border-gray-800 rounded-xl p-5 relative overflow-hidden">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-medium uppercase tracking-wider text-gray-400">本月 $<span id="kpiSubUsd">200</span> 订阅回本倍率</span>
-          <span id="kpiRoiBadge" class="text-xs px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 font-mono">0.00x</span>
-        </div>
-        <div class="mt-3 flex items-baseline gap-2">
-          <span id="kpiRoiMultiplier" class="text-3xl font-extrabold text-purple-400 tracking-tight">0.00x</span>
-          <span id="kpiRoiPercent" class="text-xs text-gray-400 font-mono">(0%)</span>
-        </div>
-        <div class="mt-3 w-full bg-gray-800 h-2.5 rounded-full overflow-hidden">
-          <div id="kpiRoiBar" class="bg-gradient-to-r from-purple-500 via-emerald-400 to-cyan-400 h-full transition-all duration-500" style="width: 0%"></div>
-        </div>
-      </div>
-
-      <!-- Card 4: Cache Hit Rate -->
+      <!-- Card 3: Cache Hit Rate -->
       <div class="bg-gray-900/90 border border-gray-800 rounded-xl p-5 relative overflow-hidden">
         <div class="flex items-center justify-between">
           <span class="text-xs font-medium uppercase tracking-wider text-gray-400">总缓存命中率 (Cache Hit)</span>
@@ -163,15 +197,38 @@
       <div id="heatmapChart" class="w-full h-44"></div>
     </section>
 
-    <!-- Chart 2 & Chart 3: Daily Trend + Model Breakdown -->
-    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Daily Token & USD Dual-Axis Trend -->
-      <div class="lg:col-span-2 bg-gray-900/90 border border-gray-800 rounded-xl p-5">
-        <div class="mb-3">
-          <h2 class="text-sm font-bold text-gray-100">📈 每日 Token 消耗与等价美金双轴趋势</h2>
-          <p class="text-xs text-gray-400">左轴：Token 消耗量 · 右轴：折算 API 成本 ($ USD)</p>
+    <!-- Chart 2: Daily Trend -->
+    <section class="bg-gray-900/90 border border-gray-800 rounded-xl p-5">
+      <div class="mb-3">
+        <h2 class="text-sm font-bold text-gray-100">📈 每日 Token 消耗与等价美金双轴趋势</h2>
+        <p class="text-xs text-gray-400">左轴：Token 消耗量 · 右轴：折算 API 成本 ($ USD)</p>
+      </div>
+      <div id="dailyTrendChart" class="w-full h-80"></div>
+    </section>
+
+    <!-- Chart 3 & Chart 4: Device / Member Share + Model Breakdown -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Device / Member Contribution Doughnut Chart -->
+      <div class="bg-gray-900/90 border border-gray-800 rounded-xl p-5 flex flex-col">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h2 class="text-sm font-bold text-gray-100">👥 成员 / 设备消耗占比与成本排行</h2>
+            <p id="deviceSubTitle" class="text-xs text-gray-400">各成员设备今日账单与 Token 贡献比</p>
+          </div>
+          <!-- Toggle Button for Today / All History -->
+          <div class="inline-flex rounded-lg bg-gray-950 p-0.5 border border-gray-800 text-[11px] font-mono">
+            <button id="btnDeviceTabToday" onclick="setDeviceTimeTab('today')"
+              class="px-2.5 py-1 rounded-md transition font-medium bg-emerald-500 text-gray-950 shadow-sm">
+              今日
+            </button>
+            <button id="btnDeviceTabAll" onclick="setDeviceTimeTab('all')"
+              class="px-2.5 py-1 rounded-md transition font-medium text-gray-400 hover:text-white">
+              历史累计
+            </button>
+          </div>
         </div>
-        <div id="dailyTrendChart" class="w-full h-80"></div>
+        <div id="devicePieChart" class="w-full h-56"></div>
+        <div id="deviceRankList" class="mt-3 flex-1 overflow-y-auto max-h-44 space-y-2 pr-1"></div>
       </div>
 
       <!-- Model Cost Doughnut Chart -->
@@ -180,8 +237,8 @@
           <h2 class="text-sm font-bold text-gray-100">🧠 模型消耗占比与成本排行</h2>
           <p class="text-xs text-gray-400">各主力模型美金账单与 Token 贡献比</p>
         </div>
-        <div id="modelPieChart" class="w-full h-52"></div>
-        <div id="modelRankList" class="mt-3 flex-1 overflow-y-auto max-h-40 space-y-2 pr-1"></div>
+        <div id="modelPieChart" class="w-full h-56"></div>
+        <div id="modelRankList" class="mt-3 flex-1 overflow-y-auto max-h-44 space-y-2 pr-1"></div>
       </div>
     </section>
 
@@ -281,9 +338,64 @@
   <script>
     const ADMIN_KEY_STORAGE = 'ag_usage_hub_admin_key';
     let currentDeviceFilter = 'all';
+    let currentDeviceTimeTab = 'today'; // 'today' | 'all'
+    let lastLoadedDevices = [];
     let heatmapChartInstance = null;
     let dailyTrendChartInstance = null;
+    let devicePieChartInstance = null;
     let modelPieChartInstance = null;
+
+    function setDeviceTimeTab(tab) {
+      currentDeviceTimeTab = tab;
+      const btnToday = document.getElementById('btnDeviceTabToday');
+      const btnAll = document.getElementById('btnDeviceTabAll');
+      const subTitle = document.getElementById('deviceSubTitle');
+
+      if (tab === 'today') {
+        btnToday.className = 'px-2.5 py-1 rounded-md transition font-medium bg-emerald-500 text-gray-950 shadow-sm';
+        btnAll.className = 'px-2.5 py-1 rounded-md transition font-medium text-gray-400 hover:text-white';
+        if (subTitle) subTitle.textContent = '各成员设备今日账单与 Token 贡献比';
+      } else {
+        btnAll.className = 'px-2.5 py-1 rounded-md transition font-medium bg-emerald-500 text-gray-950 shadow-sm';
+        btnToday.className = 'px-2.5 py-1 rounded-md transition font-medium text-gray-400 hover:text-white';
+        if (subTitle) subTitle.textContent = '各成员设备全部历史累计账单与 Token 贡献比';
+      }
+      renderDeviceBreakdown(lastLoadedDevices);
+    }
+
+    function getLocalDateStr(offsetDays = 0) {
+      // Use Asia/Shanghai (Beijing time, UTC+8) for date alignment
+      const now = new Date();
+      const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+      const beijingTime = new Date(utcMs + 8 * 3600000);
+      if (offsetDays) {
+        beijingTime.setDate(beijingTime.getDate() + offsetDays);
+      }
+      const y = beijingTime.getFullYear();
+      const m = String(beijingTime.getMonth() + 1).padStart(2, '0');
+      const day = String(beijingTime.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function formatBeijingTime(isoStr) {
+      if (!isoStr) return '从未上报';
+      try {
+        const d = new Date(isoStr);
+        if (isNaN(d.getTime())) return isoStr;
+        return d.toLocaleString('zh-CN', {
+          timeZone: 'Asia/Shanghai',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        }).replace(/\//g, '-');
+      } catch (e) {
+        return isoStr;
+      }
+    }
 
     function formatTokens(num) {
       const n = Number(num || 0);
@@ -320,15 +432,50 @@
         return;
       }
       const data = await res.json();
-      renderKPIs(data.kpi);
+      lastLoadedDevices = data.devices || [];
+      renderKPIs(data.kpi, data.daily);
       renderDeviceHeader(data.devices, data.device_filter);
       renderDeviceTable(data.devices);
       renderHeatmap(data.daily);
       renderDailyTrend(data.daily);
+      renderDeviceBreakdown(data.devices);
       renderModelBreakdown(data.models);
     }
 
-    function renderKPIs(kpi) {
+    function renderKPIs(kpi, dailyList) {
+      const todayStr = getLocalDateStr(0);
+      const yesterdayStr = getLocalDateStr(-1);
+      const todayEntry = (dailyList || []).find(d => d.date === todayStr) || {
+        total_tokens: 0,
+        input_tokens: 0,
+        output_tokens: 0,
+        reasoning_tokens: 0,
+        cache_creation_tokens: 0,
+        cache_read_tokens: 0,
+        total_cost: 0
+      };
+      const yesterdayEntry = (dailyList || []).find(d => d.date === yesterdayStr) || {
+        total_cost: 0
+      };
+
+      // --- Row 1: Today KPIs ---
+      document.getElementById('kpiTodayTokens').textContent = formatTokens(todayEntry.total_tokens);
+      document.getElementById('kpiTodayTokensRaw').textContent = Number(todayEntry.total_tokens || 0).toLocaleString();
+      document.getElementById('kpiTodayInputTokens').textContent = formatTokens(todayEntry.input_tokens);
+      document.getElementById('kpiTodayOutputTokens').textContent = formatTokens(todayEntry.output_tokens);
+      document.getElementById('kpiTodayReasoningTokens').textContent = formatTokens(todayEntry.reasoning_tokens);
+
+      document.getElementById('kpiTodayCost').textContent = formatUsd(todayEntry.total_cost);
+      document.getElementById('kpiYesterdayCost').textContent = formatUsd(yesterdayEntry.total_cost);
+      document.getElementById('kpiTodayDate').textContent = todayStr;
+
+      const todayCacheDenom = Number(todayEntry.input_tokens || 0) + Number(todayEntry.cache_creation_tokens || 0) + Number(todayEntry.cache_read_tokens || 0);
+      const todayCacheHitRate = todayCacheDenom > 0 ? ((Number(todayEntry.cache_read_tokens || 0) / todayCacheDenom) * 100) : 0;
+      document.getElementById('kpiTodayCacheHitRate').textContent = `${todayCacheHitRate.toFixed(1)}%`;
+      document.getElementById('kpiTodayCacheRead').textContent = formatTokens(todayEntry.cache_read_tokens);
+      document.getElementById('kpiTodayCacheCreate').textContent = formatTokens(todayEntry.cache_creation_tokens);
+
+      // --- Row 2: Cumulative KPIs ---
       document.getElementById('kpiTotalTokens').textContent = formatTokens(kpi.total_tokens);
       document.getElementById('kpiTotalTokensRaw').textContent = Number(kpi.total_tokens || 0).toLocaleString();
       document.getElementById('kpiInputTokens').textContent = formatTokens(kpi.input_tokens);
@@ -340,14 +487,6 @@
       document.getElementById('kpiMonthCost').textContent = formatUsd(kpi.current_month_cost);
       document.getElementById('kpiCurrentMonth').textContent = kpi.current_month || '';
 
-      document.getElementById('kpiSubUsd').textContent = kpi.sub_monthly_usd || 200;
-      const mult = Number(kpi.roi_multiplier || 0).toFixed(2) + 'x';
-      document.getElementById('kpiRoiMultiplier').textContent = mult;
-      document.getElementById('kpiRoiBadge').textContent = mult;
-      document.getElementById('kpiRoiPercent').textContent = `(${kpi.roi_percent || 0}%)`;
-      const barWidth = Math.min(100, Math.max(0, Number(kpi.roi_percent || 0)));
-      document.getElementById('kpiRoiBar').style.width = `${barWidth}%`;
-
       document.getElementById('kpiCacheHitRate').textContent = `${Number(kpi.cache_hit_rate || 0).toFixed(1)}%`;
       document.getElementById('kpiCacheRead').textContent = formatTokens(kpi.cache_read_tokens);
       document.getElementById('kpiCacheCreate').textContent = formatTokens(kpi.cache_creation_tokens);
@@ -355,7 +494,16 @@
 
     function renderDeviceHeader(devices, activeFilter) {
       const pillsEl = document.getElementById('devicePillsContainer');
-      const selectEl = document.getElementById('deviceSelect');
+      const allBtn = document.getElementById('allDevicesBtn');
+
+      const isAllActive = !activeFilter || activeFilter === 'all';
+      if (allBtn) {
+        allBtn.className = `inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold transition ${
+          isAllActive
+            ? 'border-emerald-500 bg-emerald-950/50 text-emerald-300 shadow-sm shadow-emerald-500/10'
+            : 'border-gray-800 bg-gray-900 text-gray-300 hover:border-gray-700'
+        }`;
+      }
 
       pillsEl.innerHTML = '';
       devices.forEach(dev => {
@@ -371,15 +519,6 @@
         btn.onclick = () => handleDeviceChange(dev.device_id === activeFilter ? 'all' : dev.device_id);
         btn.innerHTML = `<span class="w-2 h-2 rounded-full ${dotColor}"></span><span>${escapeHtml(dev.display_name)}</span>`;
         pillsEl.appendChild(btn);
-      });
-
-      selectEl.innerHTML = '<option value="all">🌐 全部设备汇总 (All Devices)</option>';
-      devices.forEach(dev => {
-        const opt = document.createElement('option');
-        opt.value = dev.device_id;
-        opt.textContent = `${dev.display_name} (${dev.status.toUpperCase()})`;
-        if (dev.device_id === activeFilter) opt.selected = true;
-        selectEl.appendChild(opt);
       });
     }
 
@@ -406,7 +545,7 @@
             <td class="py-2.5 px-3 text-gray-400">${escapeHtml(hostOs)}</td>
             <td class="py-2.5 px-3 font-mono text-emerald-300">${formatTokens(dev.total_tokens)}</td>
             <td class="py-2.5 px-3 font-mono text-cyan-300">${formatUsd(dev.total_cost)}</td>
-            <td class="py-2.5 px-3 font-mono text-gray-400">${dev.last_seen_at ? escapeHtml(dev.last_seen_at) : '从未上报'}</td>
+            <td class="py-2.5 px-3 font-mono text-gray-400">${formatBeijingTime(dev.last_seen_at)}</td>
             <td class="py-2.5 px-3 text-right space-x-2">
               <button onclick="showExistingDevicePrompt('${escapeHtml(dev.device_id)}')" class="text-cyan-400 hover:underline">重看指令</button>
               <button onclick="revokeDevice('${escapeHtml(dev.device_id)}', '${escapeHtml(dev.display_name)}')" class="text-red-400 hover:underline">吊销</button>
@@ -546,6 +685,93 @@
       });
     }
 
+    function renderDeviceBreakdown(devices) {
+      if (!devicePieChartInstance) {
+        devicePieChartInstance = echarts.init(document.getElementById('devicePieChart'));
+      }
+      const todayStr = getLocalDateStr(0);
+      const isToday = currentDeviceTimeTab === 'today';
+
+      const devItems = (devices || []).map(d => {
+        let tokens = Number(d.total_tokens || 0);
+        let cost = Number(d.total_cost || 0);
+        if (isToday) {
+          const dayData = (d.daily && d.daily[todayStr]) || { total_tokens: 0, total_cost: 0 };
+          tokens = Number(dayData.total_tokens || 0);
+          cost = Number(dayData.total_cost || 0);
+        }
+        return {
+          device_id: d.device_id,
+          display_name: d.display_name,
+          tokens: tokens,
+          cost: cost
+        };
+      });
+
+      const sortedDevs = devItems.sort((a, b) => {
+        const diffCost = b.cost - a.cost;
+        if (diffCost !== 0) return diffCost;
+        return b.tokens - a.tokens;
+      });
+
+      const totalAllCost = sortedDevs.reduce((acc, d) => acc + d.cost, 0);
+      const totalAllTokens = sortedDevs.reduce((acc, d) => acc + d.tokens, 0);
+      const useCost = totalAllCost > 0;
+
+      const pieData = sortedDevs
+        .filter(d => d.tokens > 0 || d.cost > 0)
+        .map(d => ({
+          name: d.display_name,
+          value: useCost ? Number(d.cost.toFixed(4)) : d.tokens,
+          tokens: d.tokens,
+          cost: d.cost
+        }));
+
+      devicePieChartInstance.setOption({
+        tooltip: {
+          trigger: 'item',
+          backgroundColor: '#111827',
+          borderColor: '#374151',
+          textStyle: { color: '#f3f4f6' },
+          formatter: p => {
+            const d = p.data || {};
+            return `${escapeHtml(p.name)} (${isToday ? '今日' : '历史累计'})<br/>账单: <b>${formatUsd(d.cost)}</b> (${p.percent}%)<br/>Tokens: <b>${formatTokens(d.tokens)}</b>`;
+          }
+        },
+        series: [{
+          type: 'pie',
+          radius: ['45%', '72%'],
+          center: ['50%', '50%'],
+          label: { color: '#d1d5db', fontSize: 10 },
+          data: pieData.length ? pieData : [{ name: isToday ? '今日暂无消耗' : '暂无设备数据', value: 0, tokens: 0, cost: 0 }]
+        }]
+      });
+
+      const rankEl = document.getElementById('deviceRankList');
+      if (!sortedDevs.length) {
+        rankEl.innerHTML = '<div class="text-xs text-gray-500 text-center py-4">暂无设备记录</div>';
+        return;
+      }
+      rankEl.innerHTML = sortedDevs.map((d, i) => {
+        const pct = useCost
+          ? ((d.cost / totalAllCost) * 100).toFixed(1)
+          : (totalAllTokens > 0 ? ((d.tokens / totalAllTokens) * 100).toFixed(1) : '0.0');
+        return `
+          <div onclick="handleDeviceChange('${escapeHtml(d.device_id)}')" class="flex items-center justify-between text-xs bg-gray-950/60 hover:bg-gray-800/60 border border-gray-800/80 rounded-lg px-3 py-1.5 cursor-pointer transition">
+            <div class="flex items-center gap-2 truncate">
+              <span class="text-gray-500 font-mono">#${i + 1}</span>
+              <span class="font-medium text-gray-200 truncate">${escapeHtml(d.display_name)}</span>
+              <span class="text-[11px] text-purple-400 font-mono">${pct}%</span>
+            </div>
+            <div class="flex items-center gap-3 font-mono shrink-0">
+              <span class="text-emerald-400">${formatTokens(d.tokens)}</span>
+              <span class="text-cyan-400 font-bold">${formatUsd(d.cost)}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
     function renderModelBreakdown(models) {
       if (!modelPieChartInstance) {
         modelPieChartInstance = echarts.init(document.getElementById('modelPieChart'));
@@ -577,18 +803,25 @@
         rankEl.innerHTML = '<div class="text-xs text-gray-500 text-center py-4">暂无模型消耗记录</div>';
         return;
       }
-      rankEl.innerHTML = models.map((m, i) => `
-        <div class="flex items-center justify-between text-xs bg-gray-950/60 border border-gray-800/80 rounded-lg px-3 py-1.5">
-          <div class="flex items-center gap-2 truncate">
-            <span class="text-gray-500 font-mono">#${i + 1}</span>
-            <span class="font-medium text-gray-200 truncate">${escapeHtml(m.model_name)}</span>
+      rankEl.innerHTML = models.map((m, i) => {
+        const p = m.unit_pricing;
+        const priceStr = p ? `入 $${p.input} · 出 $${p.output} · 缓 $${p.cache_read} /1M` : '';
+        return `
+        <div class="flex items-center justify-between text-xs bg-gray-950/60 border border-gray-800/80 rounded-lg px-3 py-2">
+          <div class="flex flex-col min-w-0 mr-2">
+            <div class="flex items-center gap-2 truncate">
+              <span class="text-gray-500 font-mono">#${i + 1}</span>
+              <span class="font-medium text-gray-200 truncate" title="${escapeHtml(m.model_name)}">${escapeHtml(m.model_name)}</span>
+            </div>
+            ${priceStr ? `<div class="text-[10px] text-gray-400 font-mono pl-5 mt-0.5">${priceStr}</div>` : ''}
           </div>
           <div class="flex items-center gap-3 font-mono shrink-0">
             <span class="text-emerald-400">${formatTokens(m.total_tokens)}</span>
             <span class="text-cyan-400 font-bold">${formatUsd(m.total_cost)}</span>
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
     }
 
     function handleDeviceChange(deviceId) {
@@ -723,6 +956,7 @@
     window.addEventListener('resize', () => {
       heatmapChartInstance && heatmapChartInstance.resize();
       dailyTrendChartInstance && dailyTrendChartInstance.resize();
+      devicePieChartInstance && devicePieChartInstance.resize();
       modelPieChartInstance && modelPieChartInstance.resize();
     });
 

@@ -237,6 +237,81 @@ def _normalize_date(raw_date: Any) -> str:
     return s
 
 
+# Authoritative pricing table (USD per 1,000,000 tokens)
+# Format: (input, output, cache_read, cache_creation)
+MODEL_PRICING_CATALOG: dict[str, tuple[float, float, float, float]] = {
+    # Gemini 4 Series
+    "gemini-4-carbon": (2.00, 10.00, 0.10, 2.00),
+    "gemini-4-argon": (2.00, 10.00, 0.10, 2.00),
+    "gemini-4-hydrogen": (1.50, 7.50, 0.075, 1.50),
+
+    # Gemini 3.8 Series
+    "gemini-3.8-flash": (0.75, 3.75, 0.075, 0.75),
+
+    # Claude 5 Series
+    "claude-opus-5-5": (4.00, 20.00, 0.20, 5.00),
+    "claude-opus-5": (4.00, 20.00, 0.20, 5.00),
+
+    # Claude 3.5 / 3.7 / 4 Series
+    "claude-3-7-sonnet": (3.00, 15.00, 0.30, 3.75),
+    "claude-3-5-sonnet": (3.00, 15.00, 0.30, 3.75),
+    "claude-sonnet-4": (3.00, 15.00, 0.30, 3.75),
+    "claude-3-opus": (15.00, 75.00, 1.50, 18.75),
+    "claude-3-5-haiku": (0.80, 4.00, 0.08, 1.00),
+
+    # Gemini 2.5 Series
+    "gemini-2.5-pro": (1.25, 5.00, 0.3125, 1.25),
+    "gemini-2.5-flash": (0.075, 0.30, 0.01875, 0.075),
+
+    # OpenAI GPT-4o / o1 / o3
+    "gpt-4o": (2.50, 10.00, 1.25, 2.50),
+    "gpt-4o-mini": (0.15, 0.60, 0.075, 0.15),
+    "o1": (15.00, 60.00, 7.50, 15.00),
+    "o3-mini": (1.10, 4.40, 0.55, 1.10),
+}
+
+
+def get_model_rates(model_name: str) -> tuple[float, float, float, float] | None:
+    norm = (model_name or "").lower().strip()
+    if norm in MODEL_PRICING_CATALOG:
+        return MODEL_PRICING_CATALOG[norm]
+    for prefix, rates in sorted(
+        MODEL_PRICING_CATALOG.items(), key=lambda x: len(x[0]), reverse=True
+    ):
+        if norm.startswith(prefix):
+            return rates
+    return None
+
+
+def get_model_rates_dict(model_name: str) -> dict[str, float] | None:
+    rates = get_model_rates(model_name)
+    if not rates:
+        return None
+    return {
+        "input": rates[0],
+        "output": rates[1],
+        "cache_read": rates[2],
+        "cache_creation": rates[3],
+    }
+
+
+def calculate_model_cost(
+    model_name: str,
+    inp: int = 0,
+    out: int = 0,
+    reas: int = 0,
+    cr: int = 0,
+    cc: int = 0,
+    fallback_cost: float = 0.0,
+) -> float:
+    rates = get_model_rates(model_name)
+    if not rates:
+        return round(fallback_cost, 6)
+    r_in, r_out, r_cr, r_cc = rates
+    cost = (inp * r_in + (out + reas) * r_out + cr * r_cr + cc * r_cc) / 1_000_000.0
+    return round(cost, 6)
+
+
 def _normalize_model_breakdown(item: dict[str, Any]) -> dict[str, Any]:
     model_name = (
         item.get("modelName")
@@ -272,7 +347,16 @@ def _normalize_model_breakdown(item: dict[str, Any]) -> dict[str, Any]:
     computed_tot = inp + out + reas + cc + cr
     if tot == 0 and computed_tot > 0:
         tot = computed_tot
-    cost = _pick_float(item, "cost", "totalCost", "total_cost", "costUSD")
+    reported_cost = _pick_float(item, "cost", "totalCost", "total_cost", "costUSD")
+    cost = calculate_model_cost(
+        str(model_name),
+        inp=inp,
+        out=out,
+        reas=reas,
+        cr=cr,
+        cc=cc,
+        fallback_cost=reported_cost,
+    )
     return {
         "model_name": str(model_name),
         "input_tokens": inp,
@@ -282,6 +366,7 @@ def _normalize_model_breakdown(item: dict[str, Any]) -> dict[str, Any]:
         "cache_read_tokens": cr,
         "total_tokens": tot,
         "cost": round(cost, 6),
+        "unit_pricing": get_model_rates_dict(str(model_name)),
     }
 
 
@@ -408,9 +493,10 @@ def normalize_daily_record(raw: dict[str, Any]) -> dict[str, Any] | None:
     elif tot == 0 and models:
         tot = sum(m["total_tokens"] for m in models)
 
-    cost = _pick_float(raw, "totalCost", "total_cost", "costUSD", "cost")
-    if cost == 0.0 and models:
+    if models:
         cost = sum(m["cost"] for m in models)
+    else:
+        cost = _pick_float(raw, "totalCost", "total_cost", "costUSD", "cost")
 
     return {
         "date": date_str,
@@ -438,7 +524,7 @@ def upsert_daily_records(
     normalized_list: list[dict[str, Any]] = []
     for r in raw_records:
         norm = normalize_daily_record(r)
-        if norm:
+        if norm and norm["date"] >= "2026-11-10":
             normalized_list.append(norm)
 
     with get_connection(db_path) as conn:
@@ -507,7 +593,11 @@ def get_aggregated_stats(
         ).fetchall()
 
         per_device_totals = {
-            r["device_id"]: {"total_tokens": 0, "total_cost": 0.0}
+            r["device_id"]: {
+                "total_tokens": 0,
+                "total_cost": 0.0,
+                "daily": {},
+            }
             for r in device_rows
         }
         dev_agg_rows = conn.execute(
@@ -522,16 +612,32 @@ def get_aggregated_stats(
         for r in dev_agg_rows:
             did = r["device_id"]
             if did in per_device_totals:
-                per_device_totals[did] = {
-                    "total_tokens": int(r["sum_tokens"] or 0),
-                    "total_cost": round(float(r["sum_cost"] or 0.0), 4),
+                per_device_totals[did]["total_tokens"] = int(r["sum_tokens"] or 0)
+                per_device_totals[did]["total_cost"] = round(float(r["sum_cost"] or 0.0), 4)
+
+        dev_daily_rows = conn.execute(
+            """
+            SELECT device_id, date,
+                   total_tokens, total_cost
+            FROM daily_records
+            """
+        ).fetchall()
+        for r in dev_daily_rows:
+            did = r["device_id"]
+            d_str = r["date"]
+            if did in per_device_totals:
+                per_device_totals[did]["daily"][d_str] = {
+                    "total_tokens": int(r["total_tokens"] or 0),
+                    "total_cost": round(float(r["total_cost"] or 0.0), 4),
                 }
 
         devices_out: list[dict[str, Any]] = []
         for r in device_rows:
             did = r["device_id"]
             last_seen = r["last_seen_at"] or ""
-            totals = per_device_totals.get(did, {"total_tokens": 0, "total_cost": 0.0})
+            totals = per_device_totals.get(
+                did, {"total_tokens": 0, "total_cost": 0.0, "daily": {}}
+            )
             devices_out.append(
                 {
                     "device_id": did,
@@ -543,6 +649,7 @@ def get_aggregated_stats(
                     "status": compute_device_status(last_seen, now_dt=ref_dt),
                     "total_tokens": totals["total_tokens"],
                     "total_cost": totals["total_cost"],
+                    "daily": totals.get("daily", {}),
                 }
             )
 
@@ -676,6 +783,8 @@ def get_aggregated_stats(
             key=lambda x: (x["cost"], x["total_tokens"]),
             reverse=True,
         )
+        for m in models_for_day:
+            m["unit_pricing"] = get_model_rates_dict(m["model_name"])
         item["model_breakdowns"] = models_for_day
         daily_series.append(item)
 
@@ -693,6 +802,7 @@ def get_aggregated_stats(
             if total_tokens > 0
             else 0.0
         )
+        m["unit_pricing"] = get_model_rates_dict(m["model_name"])
 
     cache_denom = total_input + total_cache_create + total_cache_read
     cache_hit_rate = (

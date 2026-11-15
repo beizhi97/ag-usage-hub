@@ -243,7 +243,7 @@ def test_3_heterogeneous_ccusage_json_and_gzip_report(test_env):
     assert kpi["reasoning_tokens"] == 15000
     assert kpi["cache_creation_tokens"] == 65000
     assert kpi["cache_read_tokens"] == 1200000
-    assert kpi["total_cost"] == pytest.approx(20.0)
+    assert kpi["total_cost"] == pytest.approx(1.6938)
     assert len(stats["models"]) == 2
     assert stats["devices"][0]["hostname"] == "ubuntu-dev-01"
 
