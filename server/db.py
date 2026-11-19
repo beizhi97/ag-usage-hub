@@ -240,13 +240,15 @@ def _normalize_date(raw_date: Any) -> str:
 # Authoritative pricing table (USD per 1,000,000 tokens)
 # Format: (input, output, cache_read, cache_creation)
 MODEL_PRICING_CATALOG: dict[str, tuple[float, float, float, float]] = {
-    # Gemini 4 Series
+    # Gemini 4 Series (Official elemental tiers: Carbon, Argon, Neon, Hydrogen)
     "gemini-4-carbon": (2.00, 10.00, 0.10, 2.00),
     "gemini-4-argon": (2.00, 10.00, 0.10, 2.00),
+    "gemini-4-neon": (3.00, 15.00, 0.15, 3.00),
     "gemini-4-hydrogen": (1.50, 7.50, 0.075, 1.50),
 
     # Gemini 3.8 Series
     "gemini-3.8-flash": (0.75, 3.75, 0.075, 0.75),
+    "gemini-3.8-pro": (1.25, 5.00, 0.3125, 1.25),
 
     # Claude 5 Series
     "claude-opus-5-5": (4.00, 20.00, 0.20, 5.00),
@@ -268,6 +270,12 @@ MODEL_PRICING_CATALOG: dict[str, tuple[float, float, float, float]] = {
     "gpt-4o-mini": (0.15, 0.60, 0.075, 0.15),
     "o1": (15.00, 60.00, 7.50, 15.00),
     "o3-mini": (1.10, 4.40, 0.55, 1.10),
+
+    # DeepSeek Series
+    "deepseek-chat": (0.14, 0.28, 0.014, 0.14),
+    "deepseek-reasoner": (0.55, 2.19, 0.14, 0.55),
+    "deepseek-v3": (0.14, 0.28, 0.014, 0.14),
+    "deepseek-r1": (0.55, 2.19, 0.14, 0.55),
 }
 
 
